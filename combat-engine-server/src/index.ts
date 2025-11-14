@@ -167,7 +167,8 @@ const toolDefinitions = [
         modifier: { type: 'number' },
         advantage: { type: 'boolean' },
         disadvantage: { type: 'boolean' },
-        dc: { type: 'number', description: 'Difficulty Class (optional)' }
+        dc: { type: 'number', description: 'Difficulty Class (optional)' },
+        bonus: { type: 'number', description: 'Additional bonus (e.g., from spells like Guidance)' }
       },
       required: ['character', 'ability', 'modifier']
     }
@@ -182,7 +183,8 @@ const toolDefinitions = [
         target: { type: 'string' },
         modifier: { type: 'number' },
         advantage: { type: 'boolean' },
-        disadvantage: { type: 'boolean' }
+        disadvantage: { type: 'boolean' },
+        bonus: { type: 'number', description: 'Additional bonus (e.g., from spells or magic items)' }
       },
       required: ['attacker', 'target', 'modifier']
     }
@@ -221,7 +223,8 @@ const toolDefinitions = [
         character: { type: 'string' },
         ability: { type: 'string' },
         dc: { type: 'number' },
-        modifier: { type: 'number' }
+        modifier: { type: 'number' },
+        bonus: { type: 'number', description: 'Additional bonus (e.g., from spells like Guidance)' }
       },
       required: ['character', 'ability', 'dc', 'modifier']
     }
@@ -565,6 +568,27 @@ const toolDefinitions = [
       },
       required: ['saves']
     }
+  },
+  {
+    name: 'batch_initiative_rolls',
+    description: 'Roll initiative for multiple characters at once',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        characters: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              character: { type: 'string' },
+              modifier: { type: 'number' }
+            },
+            required: ['character', 'modifier']
+          }
+        }
+      },
+      required: ['characters']
+    }
   }
 ];
 
@@ -710,7 +734,24 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       case 'initialize_battlefield': {
         const { width, height, terrain = [] } = args as any;
         
-        spatialEngine.initializeBattlefield(width, height, terrain);
+        // Convert input terrain objects to proper TerrainFeature format
+        const processedTerrain = terrain.map((t: any) => {
+          const size = t.size || 1;
+          return {
+            type: t.type === 'debris' ? 'pillar' : t.type === 'cover' ? 'wall' : (t.type || 'wall'),
+            position: { x: t.x || 0, y: t.y || 0, z: t.z || 0 },
+            dimensions: {
+              width: size,
+              height: size,
+              depth: t.depth || 5
+            },
+            blocksMovement: t.blocksMovement !== undefined ? t.blocksMovement : true,
+            blocksLineOfSight: t.blocksLineOfSight !== undefined ? t.blocksLineOfSight : false,
+            coverType: t.coverType || (t.type === 'cover' ? 'half' : 'none')
+          };
+        });
+        
+        spatialEngine.initializeBattlefield(width, height, processedTerrain);
         
         const result = {
           width,
@@ -1049,13 +1090,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
 
       // Original tools with enhanced logging
       case 'roll_check': {
-        const { character, ability, modifier, advantage, disadvantage, dc } = args as any;
+        const { character, ability, modifier, advantage, disadvantage, dc, bonus = 0 } = args as any;
         
         let notation = advantage ? '2d20kh1' : disadvantage ? '2d20kl1' : '1d20';
         notation += modifier >= 0 ? `+${modifier}` : `${modifier}`;
         
         const result = rollDice(notation);
-        const success = dc ? result.total >= dc : null;
+        const finalTotal = result.total + bonus;
+        const success = dc ? finalTotal >= dc : null;
         
         let output = `🎯 ${ability.toUpperCase()} CHECK\n\n`;
         output += `👤 Character: ${character}\n`;
@@ -1074,11 +1116,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
         }
         
         output += `➕ Modifier: ${modifier >= 0 ? '+' : ''}${modifier}\n`;
-        output += `🏆 TOTAL: ${result.total}`;
+        if (bonus !== 0) {
+          output += `🌟 Bonus: ${bonus >= 0 ? '+' : ''}${bonus}\n`;
+        }
+        output += `🏆 TOTAL: ${finalTotal}`;
         
         // Add difficulty assessment for context
         if (dc) {
-          const margin = result.total - dc;
+          const margin = finalTotal - dc;
           output += `\n🎯 DC: ${dc}\n`;
           output += `📊 RESULT: ${success ? '✅ SUCCESS!' : '❌ FAILURE!'}`;
           if (success && margin >= 10) {
@@ -1092,16 +1137,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
           }
         } else {
           // No DC - give context based on the roll
-          if (result.total >= 20) output += ` 🌟 EXCEPTIONAL!`;
-          else if (result.total >= 15) output += ` 🎉 GREAT ROLL!`;
-          else if (result.total >= 10) output += ` 👍 DECENT`;
-          else if (result.total >= 5) output += ` 😬 LOW`;
+          if (finalTotal >= 20) output += ` 🌟 EXCEPTIONAL!`;
+          else if (finalTotal >= 15) output += ` 🎉 GREAT ROLL!`;
+          else if (finalTotal >= 10) output += ` 👍 DECENT`;
+          else if (finalTotal >= 5) output += ` 😬 LOW`;
           else output += ` 💥 TERRIBLE`;
         }
         
         const advantageText = advantage ? ' (ADVANTAGE)' : disadvantage ? ' (DISADVANTAGE)' : '';
+        const bonusText = bonus !== 0 ? ` (+${bonus} bonus)` : '';
         const dcText = dc ? ` vs DC ${dc} - ${success ? 'SUCCESS' : 'FAILURE'}` : '';
-        const logEntry = `${character} ${ability} check${advantageText}: ${result.total}${dcText}`;
+        const logEntry = `${character} ${ability} check${advantageText}${bonusText}: ${finalTotal}${dcText}`;
         combatLog.push(logEntry);
         
         return {
@@ -1131,7 +1177,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       }
 
       case 'attack_roll': {
-        const { attacker, target, modifier = 0, advantage: hasAdvantage, disadvantage: hasDisadvantage } = args as any;
+        const { attacker, target, modifier = 0, advantage: hasAdvantage, disadvantage: hasDisadvantage, bonus = 0 } = args as any;
 
         let roll1 = rollDice('1d20');
         let roll2 = (hasAdvantage || hasDisadvantage) ? rollDice('1d20') : null;
@@ -1147,7 +1193,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
           diceUsed = [roll1.total, roll2.total];
         }
         
-        const finalTotal = selectedD20 + modifier;
+        const finalTotal = selectedD20 + modifier + bonus;
         const critical = selectedD20 === 20;
         const fumble = selectedD20 === 1;
         
@@ -1166,13 +1212,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
           output += `➕ Modifier: ${modifier >= 0 ? '+' : ''}${modifier}\n`;
         }
         
-        output += `🏆 TOTAL: ${finalTotal}`;
+        if (bonus !== 0) {
+          output += `🌟 Bonus: ${bonus >= 0 ? '+' : ''}${bonus}\n`;
+        }
+        
+        output += `� TOTAL: ${finalTotal}`;
         
         if (critical) output += ` 🎉 CRITICAL HIT!`;
         if (fumble) output += ` 💥 CRITICAL MISS!`;
         
         const advantageText = hasAdvantage ? ' (ADVANTAGE)' : hasDisadvantage ? ' (DISADVANTAGE)' : '';
-        const logEntry = `${attacker} attacks ${target}: ${finalTotal}${advantageText} ${critical ? '(CRITICAL!)' : fumble ? '(FUMBLE!)' : ''}`;
+        const bonusText = bonus !== 0 ? ` (+${bonus} bonus)` : '';
+        const logEntry = `${attacker} attacks ${target}: ${finalTotal}${advantageText}${bonusText} ${critical ? '(CRITICAL!)' : fumble ? '(FUMBLE!)' : ''}`;
         combatLog.push(logEntry);
         
         return {
@@ -1218,10 +1269,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
       }
 
       case 'saving_throw': {
-        const { character, ability, dc, modifier } = args as any;
+        const { character, ability, dc, modifier, bonus = 0 } = args as any;
         const result = rollDice(`1d20+${modifier}`);
-        const success = result.total >= dc;
-        const margin = result.total - dc;
+        const finalTotal = result.total + bonus;
+        const success = finalTotal >= dc;
+        const margin = finalTotal - dc;
         
         let output = `🛡️ ${ability.toUpperCase()} SAVING THROW\n\n`;
         output += `👤 Character: ${character}\n`;
@@ -1229,7 +1281,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
         if (result.modifier !== 0) {
           output += `➕ Modifier: ${result.modifier >= 0 ? '+' : ''}${result.modifier}\n`;
         }
-        output += `🏆 TOTAL: ${result.total}\n`;
+        if (bonus !== 0) {
+          output += `🌟 Bonus: ${bonus >= 0 ? '+' : ''}${bonus}\n`;
+        }
+        output += `🏆 TOTAL: ${finalTotal}\n`;
         output += `🎯 DC: ${dc}\n`;
         output += `📊 RESULT: ${success ? '✅ SUCCESS!' : '❌ FAILURE!'}`;
         
@@ -1250,7 +1305,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
         if (result.rolls[0] === 20) output += `\n🎉 NATURAL 20! Auto-success against most effects!`;
         if (result.rolls[0] === 1) output += `\n💥 NATURAL 1! Critical failure!`;
         
-        const logEntry = `${character} ${ability} save: ${result.total} vs DC ${dc} - ${success ? 'SUCCESS' : 'FAILURE'}`;
+        const bonusText = bonus !== 0 ? ` (+${bonus} bonus)` : '';
+        const logEntry = `${character} ${ability} save${bonusText}: ${finalTotal} vs DC ${dc} - ${success ? 'SUCCESS' : 'FAILURE'}`;
         combatLog.push(logEntry);
         
         return {
@@ -1657,6 +1713,73 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
           output += `\n❌ FAILED SAVING THROWS:\n`;
           failed.forEach((result: any, index: number) => {
             output += `${index + 1}. ${result.character} ${result.ability}: ${result.error}\n`;
+          });
+        }
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'batch_initiative_rolls': {
+        const { characters } = args as any;
+        const initiativeResults = [];
+        
+        for (const characterData of characters) {
+          try {
+            const { character, modifier } = characterData;
+            const result = rollDice(`1d20+${modifier}`);
+            
+            initiativeResults.push({
+              success: true,
+              character,
+              roll: result.rolls[0],
+              modifier,
+              total: result.total,
+              natural20: result.rolls[0] === 20,
+              natural1: result.rolls[0] === 1
+            });
+            
+            const logEntry = `${character} initiative: ${result.total}`;
+            combatLog.push(logEntry);
+            
+          } catch (error: any) {
+            initiativeResults.push({
+              success: false,
+              character: characterData.character,
+              error: error.message
+            });
+          }
+        }
+        
+        let output = `⚡ BATCH INITIATIVE ROLLS COMPLETE!\n\n`;
+        const successful = initiativeResults.filter(i => i.success);
+        const failed = initiativeResults.filter(i => !i.success);
+        
+        output += `📊 Results: ${successful.length} initiatives rolled, ${failed.length} failed\n\n`;
+        
+        if (successful.length > 0) {
+          // Sort by initiative total (highest first)
+          const sorted = [...successful].sort((a: any, b: any) => b.total - a.total);
+          
+          output += `🎲 INITIATIVE ORDER (highest to lowest):\n`;
+          sorted.forEach((result: any, index: number) => {
+            const specialIcon = result.natural20 ? ' 🎉' : result.natural1 ? ' 💥' : '';
+            output += `${index + 1}. ⚡ ${result.character}: ${result.roll}`;
+            if (result.modifier !== 0) {
+              output += `${result.modifier >= 0 ? '+' : ''}${result.modifier}`;
+            }
+            output += ` = ${result.total}${specialIcon}\n`;
+          });
+          
+          output += `\n💡 TURN ORDER ESTABLISHED!\n`;
+          output += `🎯 Combat begins with ${sorted[0].character} (Initiative ${sorted[0].total})`;
+        }
+        
+        if (failed.length > 0) {
+          output += `\n❌ FAILED INITIATIVE ROLLS:\n`;
+          failed.forEach((result: any, index: number) => {
+            output += `${index + 1}. ${result.character}: ${result.error}\n`;
           });
         }
         

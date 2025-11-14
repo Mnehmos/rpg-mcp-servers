@@ -418,7 +418,7 @@ export class SpatialEngine {
         
         // Check for creatures (they override terrain)
         for (const [id, creature] of this.battlefield.creatures) {
-          if (creature.position.x === x && creature.position.y === y) {
+          if (creature.position && creature.position.x === x && creature.position.y === y) {
             cell = creature.name.charAt(0).toUpperCase(); // First letter of name
             break;
           }

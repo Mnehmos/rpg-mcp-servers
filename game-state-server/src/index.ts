@@ -207,6 +207,21 @@ const toolDefinitions = [
       required: ['character_id', 'location']
     }
   },
+  {
+    name: 'append_world_state',
+    description: 'Append/merge data to the current world state without overwriting existing data',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        location: { type: 'string' },
+        npcs: { type: 'object' },
+        events: { type: 'object' },
+        environment: { type: 'object' }
+      },
+      required: ['character_id']
+    }
+  },
 
   // Enhanced NPC Management
   {
@@ -532,6 +547,402 @@ const toolDefinitions = [
       required: ['character_id', 'quest_id']
     }
   },
+  // Spell Management
+  {
+    name: 'add_spell',
+    description: 'Add a spell to a character\'s spellbook',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        spell_name: { type: 'string' },
+        spell_level: { type: 'number', minimum: 0, maximum: 9 },
+        is_prepared: { type: 'boolean', default: true },
+        is_known: { type: 'boolean', default: true },
+        source: { type: 'string', default: 'class', description: 'Source of the spell (class, racial, feat, etc.)' },
+        description: { type: 'string', description: 'Spell description and effects' }
+      },
+      required: ['character_id', 'spell_name', 'spell_level']
+    }
+  },
+  {
+    name: 'remove_spell',
+    description: 'Remove a spell from a character\'s spellbook',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        spell_id: { type: 'number' }
+      },
+      required: ['spell_id']
+    }
+  },
+  {
+    name: 'get_character_spells',
+    description: 'Get all spells for a character with optional filtering',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        spell_level: { type: 'number', minimum: 0, maximum: 9 },
+        is_prepared: { type: 'boolean' },
+        is_known: { type: 'boolean' },
+        source: { type: 'string' }
+      },
+      required: ['character_id']
+    }
+  },
+  {
+    name: 'update_spell_status',
+    description: 'Update spell preparation or known status',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        spell_id: { type: 'number' },
+        is_prepared: { type: 'boolean' },
+        is_known: { type: 'boolean' }
+      },
+      required: ['spell_id']
+    }
+  },
+  {
+    name: 'get_spell_slots',
+    description: 'Get current spell slot status for a character',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' }
+      },
+      required: ['character_id']
+    }
+  },
+  {
+    name: 'use_spell_slot',
+    description: 'Use a spell slot of specified level',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        spell_level: { type: 'number', minimum: 1, maximum: 9 }
+      },
+      required: ['character_id', 'spell_level']
+    }
+  },
+  {
+    name: 'recover_spell_slot',
+    description: 'Recover a used spell slot',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        spell_level: { type: 'number', minimum: 1, maximum: 9 }
+      },
+      required: ['character_id', 'spell_level']
+    }
+  },
+  {
+    name: 'reset_spell_slots',
+    description: 'Reset spell slots (long rest recovery)',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        spell_level: { type: 'number', minimum: 1, maximum: 9, description: 'Optional: reset only specific level' }
+      },
+      required: ['character_id']
+    }
+  },
+  {
+    name: 'initialize_spellcasting',
+    description: 'Initialize spellcasting for a character based on class and level',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        character_class: { type: 'string' },
+        level: { type: 'number', minimum: 1, maximum: 20 },
+        spellcasting_ability: { type: 'string', description: 'Optional: override default spellcasting ability' }
+      },
+      required: ['character_id', 'character_class', 'level']
+    }
+  },
+  {
+    name: 'cast_spell',
+    description: 'Cast a spell, automatically using appropriate spell slot',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        spell_name: { type: 'string' },
+        cast_at_level: { type: 'number', minimum: 1, maximum: 9, description: 'Level to cast the spell at (for upcasting)' }
+      },
+      required: ['character_id', 'spell_name']
+    }
+  },
+
+  // Stronghold Management
+  {
+    name: 'create_stronghold',
+    description: 'Create a new stronghold for a character',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        name: { type: 'string' },
+        location: { type: 'string' },
+        stronghold_type: { type: 'string', default: 'Keep' },
+        level: { type: 'number', default: 1 },
+        defense_bonus: { type: 'number', default: 0 },
+        prosperity_level: { type: 'number', default: 1 },
+        description: { type: 'string' },
+        special_features: { type: 'object' }
+      },
+      required: ['character_id', 'name', 'location']
+    }
+  },
+  {
+    name: 'get_stronghold_status',
+    description: 'Get detailed information about a stronghold including facilities and staff',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stronghold_id: { type: 'number' }
+      },
+      required: ['stronghold_id']
+    }
+  },
+  {
+    name: 'get_character_strongholds',
+    description: 'List all strongholds owned by a character',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' }
+      },
+      required: ['character_id']
+    }
+  },
+  {
+    name: 'update_stronghold',
+    description: 'Update stronghold properties',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stronghold_id: { type: 'number' },
+        updates: { type: 'object' }
+      },
+      required: ['stronghold_id', 'updates']
+    }
+  },
+
+  // Facility Management
+  {
+    name: 'add_facility',
+    description: 'Add a new facility to a stronghold',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stronghold_id: { type: 'number' },
+        facility_type: { type: 'string' },
+        name: { type: 'string' },
+        level: { type: 'number', default: 1 },
+        construction_cost: { type: 'number' },
+        upkeep_cost: { type: 'number' },
+        build_time_weeks: { type: 'number' },
+        status: { type: 'string', default: 'active' },
+        benefits: { type: 'object' },
+        description: { type: 'string' }
+      },
+      required: ['stronghold_id', 'facility_type', 'name']
+    }
+  },
+  {
+    name: 'upgrade_facility',
+    description: 'Upgrade an existing facility to a higher level',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        facility_id: { type: 'number' },
+        new_level: { type: 'number' },
+        upgrade_cost: { type: 'number' }
+      },
+      required: ['facility_id', 'new_level']
+    }
+  },
+  {
+    name: 'get_stronghold_facilities',
+    description: 'List all facilities in a stronghold',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stronghold_id: { type: 'number' }
+      },
+      required: ['stronghold_id']
+    }
+  },
+  {
+    name: 'list_facility_types',
+    description: 'List available facility types with their costs and benefits',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        category: { type: 'string', enum: ['military', 'utility', 'economic', 'social', 'magical'] }
+      }
+    }
+  },
+
+  // Hireling Management
+  {
+    name: 'recruit_hireling',
+    description: 'Recruit a new hireling for a character',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        name: { type: 'string' },
+        hireling_type: { type: 'string' },
+        profession: { type: 'string' },
+        tier: { type: 'string', enum: ['laborers', 'specialists', 'retainers'], default: 'laborers' },
+        daily_wage_sp: { type: 'number', default: 2 },
+        skill_bonus: { type: 'number', default: 0 },
+        abilities: { type: 'object' },
+        notes: { type: 'string' }
+      },
+      required: ['character_id', 'name', 'hireling_type', 'profession']
+    }
+  },
+  {
+    name: 'assign_hireling',
+    description: 'Assign a hireling to a specific task or facility',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        hireling_id: { type: 'number' },
+        task: { type: 'string' },
+        facility_id: { type: 'number' }
+      },
+      required: ['hireling_id', 'task']
+    }
+  },
+  {
+    name: 'manage_hireling_loyalty',
+    description: 'Update a hireling\'s loyalty based on events',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        hireling_id: { type: 'number' },
+        loyalty_change: { type: 'number' },
+        reason: { type: 'string' }
+      },
+      required: ['hireling_id', 'loyalty_change']
+    }
+  },
+  {
+    name: 'calculate_hireling_costs',
+    description: 'Calculate weekly wage costs for all hirelings',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' }
+      },
+      required: ['character_id']
+    }
+  },
+  {
+    name: 'list_character_hirelings',
+    description: 'List all hirelings for a character',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        status: { type: 'string', enum: ['active', 'busy', 'injured', 'away', 'dismissed'] }
+      },
+      required: ['character_id']
+    }
+  },
+
+  // Business Operations
+  {
+    name: 'establish_business',
+    description: 'Create a new income-generating business in a stronghold',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stronghold_id: { type: 'number' },
+        name: { type: 'string' },
+        business_type: { type: 'string' },
+        investment_cost: { type: 'number', default: 0 },
+        weekly_income: { type: 'number', default: 0 },
+        risk_level: { type: 'string', enum: ['low', 'medium', 'high'], default: 'low' },
+        employee_count: { type: 'number', default: 0 },
+        description: { type: 'string' },
+        special_rules: { type: 'object' }
+      },
+      required: ['stronghold_id', 'name', 'business_type']
+    }
+  },
+  {
+    name: 'process_weekly_income',
+    description: 'Process weekly income from businesses and calculate costs',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        character_id: { type: 'number' },
+        week_number: { type: 'number' }
+      },
+      required: ['character_id', 'week_number']
+    }
+  },
+  {
+    name: 'get_stronghold_businesses',
+    description: 'List all businesses in a stronghold',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stronghold_id: { type: 'number' }
+      },
+      required: ['stronghold_id']
+    }
+  },
+
+  // Event System
+  {
+    name: 'generate_stronghold_event',
+    description: 'Generate a random event for a stronghold',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stronghold_id: { type: 'number' },
+        event_type: { type: 'string', enum: ['random', 'seasonal', 'quest', 'disaster', 'opportunity'] }
+      },
+      required: ['stronghold_id']
+    }
+  },
+  {
+    name: 'resolve_stronghold_event',
+    description: 'Resolve a stronghold event with player choice',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        event_id: { type: 'number' },
+        player_choice: { type: 'string' },
+        outcome: { type: 'string' }
+      },
+      required: ['event_id', 'player_choice']
+    }
+  },
+  {
+    name: 'get_stronghold_events',
+    description: 'List events for a stronghold',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        stronghold_id: { type: 'number' },
+        status: { type: 'string', enum: ['pending', 'resolved', 'ignored', 'expired'] }
+      },
+      required: ['stronghold_id']
+    }
+  },
+
   // Batch Operations for Efficiency
   {
     name: 'batch_create_npcs',
@@ -617,6 +1028,33 @@ const toolDefinitions = [
         }
       },
       required: ['npc_ids']
+    }
+  },
+  {
+    name: 'batch_add_to_encounter',
+    description: 'Add multiple participants to an encounter at once',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        encounter_id: { type: 'number' },
+        participants: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              type: {
+                type: 'string',
+                enum: ['character', 'npc']
+              },
+              id: { type: 'number' },
+              initiative: { type: 'number' },
+              name: { type: 'string', description: 'Optional name for display (auto-fetched if not provided)' }
+            },
+            required: ['type', 'id', 'initiative']
+          }
+        }
+      },
+      required: ['encounter_id', 'participants']
     }
   }
 ];
@@ -757,7 +1195,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
 │ 🔬 Investigation (Int): ${formatModifier(intMod).padStart(3)}  │ 🩺 Medicine (Wis):      ${formatModifier(wisMod).padStart(3)}  │
 └─────────────────────────────────────────────────────────────┘
 
-📅 CHARACTER INFO:
+${character.features ? `✨ FEATURES & ABILITIES:
+┌─────────────────────────────────────────────────────────────┐
+${Object.entries(character.features).map(([key, feature]: [string, any]) =>
+  `│ 🎯 ${feature.name || key}${feature.type ? ` (${feature.type})` : ''}${' '.repeat(Math.max(0, 57 - (feature.name || key).length - (feature.type ? feature.type.length + 3 : 0)))}│`
+).join('\n')}
+└─────────────────────────────────────────────────────────────┘
+
+` : ''}📅 CHARACTER INFO:
 ┌─────────────────────────────────────────────────────────────┐
 │ 🎂 Created: ${new Date(character.created_at).toLocaleDateString().padEnd(12)} │ 🎮 Last Played: ${new Date(character.last_played).toLocaleDateString().padEnd(12)} │
 └─────────────────────────────────────────────────────────────┘
@@ -876,7 +1321,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
 │ 🔬 Investigation (Int): ${formatModifier(intMod).padStart(3)}  │ 🩺 Medicine (Wis):      ${formatModifier(wisMod).padStart(3)}  │
 └─────────────────────────────────────────────────────────────┘
 
-📅 CHARACTER INFO:
+${character.features ? `✨ FEATURES & ABILITIES:
+┌─────────────────────────────────────────────────────────────┐
+${Object.entries(character.features).map(([key, feature]: [string, any]) =>
+  `│ 🎯 ${feature.name || key}${feature.type ? ` (${feature.type})` : ''}${' '.repeat(Math.max(0, 57 - (feature.name || key).length - (feature.type ? feature.type.length + 3 : 0)))}│`
+).join('\n')}
+└─────────────────────────────────────────────────────────────┘
+
+` : ''}📅 CHARACTER INFO:
 ┌─────────────────────────────────────────────────────────────┐
 │ 🎂 Created: ${new Date(character.created_at).toLocaleDateString().padEnd(12)} │ 🎮 Last Played: ${new Date(character.last_played).toLocaleDateString().padEnd(12)} │
 └─────────────────────────────────────────────────────────────┘
@@ -1157,6 +1609,59 @@ server.setRequestHandler(CallToolRequestSchema, async (request: any) => {
         } catch (error: any) {
           return {
             content: [{ type: 'text', text: `❌ UPDATE FAILED\n\nError updating world state: ${error.message}\n\n💡 Make sure the character ID exists and try again.` }],
+            isError: true
+          };
+        }
+      }
+
+      case 'append_world_state': {
+        const { character_id, location, npcs, events, environment } = args as any;
+        
+        try {
+          // Get existing state for output info
+          const existing = db.getWorldState(character_id);
+          
+          // Use the new appendWorldState method
+          const mergedData = db.appendWorldState(character_id, { location, npcs, events, environment });
+          
+          let output = `🔄 WORLD STATE APPENDED!\n\n`;
+          output += `👤 Character ID: ${character_id}\n`;
+          
+          if (location !== undefined) {
+            output += `📍 Location updated: ${location}\n`;
+          } else if (existing?.location) {
+            output += `📍 Location unchanged: ${existing.location}\n`;
+          }
+          
+          const changes = [];
+          if (npcs) {
+            const newKeys = Object.keys(npcs);
+            changes.push(`NPCs (${newKeys.length} added/updated: ${newKeys.slice(0, 3).join(', ')}${newKeys.length > 3 ? '...' : ''})`);
+          }
+          if (events) {
+            const newKeys = Object.keys(events);
+            changes.push(`Events (${newKeys.length} added/updated: ${newKeys.slice(0, 3).join(', ')}${newKeys.length > 3 ? '...' : ''})`);
+          }
+          if (environment) {
+            const newKeys = Object.keys(environment);
+            changes.push(`Environment (${newKeys.length} added/updated: ${newKeys.slice(0, 3).join(', ')}${newKeys.length > 3 ? '...' : ''})`);
+          }
+          
+          if (changes.length > 0) {
+            output += `📝 Appended: ${changes.join(', ')}\n`;
+          } else {
+            output += `📝 No new data appended (location only updated)\n`;
+          }
+          
+          output += `\n💾 Updated: ${new Date().toLocaleString()}\n`;
+          output += `✅ World state successfully appended without overwriting existing data!`;
+          
+          return {
+            content: [{ type: 'text', text: output }]
+          };
+        } catch (error: any) {
+          return {
+            content: [{ type: 'text', text: `❌ APPEND FAILED\n\nError appending to world state: ${error.message}\n\n💡 Make sure the character ID exists and try again.` }],
             isError: true
           };
         }
@@ -1643,6 +2148,393 @@ ${(args as any).outcome === 'victory' ? '🎉 Victory! Well fought!' :
         };
       }
 
+      // Spell Management
+      case 'add_spell': {
+        const { character_id, spell_name, spell_level, is_prepared, is_known, source, description } = args as any;
+        
+        // Get character name for display
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const spell = db.addSpell(character_id, {
+          spell_name,
+          spell_level,
+          is_prepared,
+          is_known,
+          source,
+          description
+        });
+        
+        const levelText = spell_level === 0 ? 'Cantrip' : `Level ${spell_level}`;
+        const preparedText = is_prepared !== false ? '✨ PREPARED' : '📖 KNOWN';
+        const sourceText = source ? ` (${source})` : '';
+        
+        const output = `🔮 SPELL ADDED TO SPELLBOOK!
+
+👤 ${characterName.toUpperCase()}'S SPELLBOOK
+📜 ${spell_name} - ${levelText}${sourceText}
+📊 Status: ${preparedText}
+🆔 Spell ID: ${spell.id}
+
+${description ? `📝 ${description}\n` : ''}✅ ${spell_name} has been added to ${characterName}'s magical repertoire!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'remove_spell': {
+        const { spell_id } = args as any;
+        
+        // Get spell details before removing
+        const spell = db.getSpell(spell_id);
+        let spellName = 'Unknown Spell';
+        let characterName = 'Unknown Character';
+        
+        if (spell) {
+          spellName = spell.spell_name;
+          const character = db.getCharacter(spell.character_id) as any;
+          if (character) characterName = character.name;
+        }
+        
+        db.removeSpell(spell_id);
+        
+        const output = `🗑️ SPELL REMOVED FROM SPELLBOOK!
+
+📜 ${spellName} has been removed from ${characterName}'s spellbook.
+✅ Spell successfully forgotten!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'get_character_spells': {
+        const { character_id, spell_level, is_prepared, is_known, source } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const spells = db.getCharacterSpells(character_id, {
+          spell_level,
+          is_prepared,
+          is_known,
+          source
+        });
+        
+        if (!spells || spells.length === 0) {
+          return {
+            content: [{ type: 'text', text: `📚 NO SPELLS FOUND\n\n${characterName} has no spells matching the criteria. Time to learn some magic! ✨🔮` }]
+          };
+        }
+        
+        let output = `🔮 ${characterName.toUpperCase()}'S SPELLBOOK\n\n`;
+        
+        // Group spells by level
+        const spellsByLevel: Record<number, any[]> = {};
+        spells.forEach(spell => {
+          if (!spellsByLevel[spell.spell_level]) {
+            spellsByLevel[spell.spell_level] = [];
+          }
+          spellsByLevel[spell.spell_level].push(spell);
+        });
+        
+        // Display spells by level
+        Object.keys(spellsByLevel).sort((a, b) => Number(a) - Number(b)).forEach(level => {
+          const levelNum = Number(level);
+          const levelText = levelNum === 0 ? '✨ CANTRIPS' : `📜 LEVEL ${levelNum} SPELLS`;
+          output += `${levelText}:\n`;
+          
+          spellsByLevel[levelNum].forEach((spell: any, index: number) => {
+            const statusIcon = spell.is_prepared ? '✨' : '📖';
+            const sourceText = spell.source && spell.source !== 'class' ? ` (${spell.source})` : '';
+            output += `  ${index + 1}. ${statusIcon} ${spell.spell_name}${sourceText}\n`;
+            if (spell.description) {
+              output += `      📝 ${spell.description}\n`;
+            }
+          });
+          output += '\n';
+        });
+        
+        const preparedCount = spells.filter(s => s.is_prepared).length;
+        const cantripsCount = spells.filter(s => s.spell_level === 0).length;
+        const spellsCount = spells.filter(s => s.spell_level > 0).length;
+        
+        output += `📊 SUMMARY:\n`;
+        output += `✨ Prepared: ${preparedCount} | 🔮 Cantrips: ${cantripsCount} | 📜 Spells: ${spellsCount}`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'update_spell_status': {
+        const { spell_id, is_prepared, is_known } = args as any;
+        
+        const spell = db.getSpell(spell_id);
+        if (!spell) {
+          return {
+            content: [{ type: 'text', text: '❌ Spell not found!' }]
+          };
+        }
+        
+        db.updateSpellStatus(spell_id, { is_prepared, is_known });
+        
+        let output = `🔄 SPELL STATUS UPDATED!\n\n`;
+        output += `📜 ${spell.spell_name}\n`;
+        
+        if (is_prepared !== undefined) {
+          if (is_prepared) {
+            output += `✨ Spell has been prepared and is ready to cast!\n`;
+          } else {
+            output += `📖 Spell is known but not currently prepared.\n`;
+          }
+        }
+        
+        if (is_known !== undefined) {
+          if (is_known) {
+            output += `🧠 Spell is now known by the character.\n`;
+          } else {
+            output += `❌ Spell has been forgotten.\n`;
+          }
+        }
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'get_spell_slots': {
+        const { character_id } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        const spellSlots = db.getSpellSlots(character_id);
+        
+        if (!spellSlots || spellSlots.length === 0) {
+          return {
+            content: [{ type: 'text', text: `🔮 NO SPELL SLOTS\n\n${characterName} has no spell slots. They may not be a spellcaster, or spellcasting hasn't been initialized yet.\n\n💡 Use 'initialize_spellcasting' to set up spell slots!` }]
+          };
+        }
+        
+        let output = `🔮 ${characterName.toUpperCase()}'S SPELL SLOTS\n\n`;
+        
+        // Add spellcasting info if available
+        if (character?.spellcasting_ability) {
+          output += `🧙 Spellcasting Ability: ${character.spellcasting_ability}\n`;
+          output += `🎯 Spell Save DC: ${character.spell_save_dc || 'Unknown'}\n`;
+          output += `⚔️ Spell Attack Bonus: ${character.spell_attack_bonus ? `+${character.spell_attack_bonus}` : 'Unknown'}\n\n`;
+        }
+        
+        output += `📊 SPELL SLOT STATUS:\n`;
+        spellSlots.forEach((slot: any) => {
+          const available = slot.total_slots - slot.used_slots;
+          const progressBar = '●'.repeat(available) + '○'.repeat(slot.used_slots);
+          output += `Level ${slot.spell_level}: ${available}/${slot.total_slots} ${progressBar}\n`;
+        });
+        
+        const totalUsed = spellSlots.reduce((sum: number, slot: any) => sum + slot.used_slots, 0);
+        const totalSlots = spellSlots.reduce((sum: number, slot: any) => sum + slot.total_slots, 0);
+        output += `\n🔋 Total: ${totalSlots - totalUsed}/${totalSlots} spell slots available`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'use_spell_slot': {
+        const { character_id, spell_level } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const success = db.useSpellSlot(character_id, spell_level);
+        
+        if (success) {
+          const spellSlots = db.getSpellSlots(character_id);
+          const slot = spellSlots.find((s: any) => s.spell_level === spell_level) as any;
+          const remaining = slot ? slot.total_slots - slot.used_slots : 0;
+          
+          const output = `✨ SPELL SLOT USED!
+
+👤 ${characterName}
+🔮 Level ${spell_level} spell slot consumed
+📊 Remaining: ${remaining}/${slot?.total_slots || 0}
+
+⚡ Magic flows through ${characterName}!`;
+          
+          return {
+            content: [{ type: 'text', text: output }]
+          };
+        } else {
+          return {
+            content: [{ type: 'text', text: `❌ NO SPELL SLOTS AVAILABLE\n\n${characterName} has no level ${spell_level} spell slots available!\n\n💡 Try a long rest to recover spell slots.` }]
+          };
+        }
+      }
+
+      case 'recover_spell_slot': {
+        const { character_id, spell_level } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const success = db.recoverSpellSlot(character_id, spell_level);
+        
+        if (success) {
+          const spellSlots = db.getSpellSlots(character_id);
+          const slot = spellSlots.find((s: any) => s.spell_level === spell_level) as any;
+          const available = slot ? slot.total_slots - slot.used_slots : 0;
+          
+          const output = `🔋 SPELL SLOT RECOVERED!
+
+👤 ${characterName}
+🔮 Level ${spell_level} spell slot restored
+📊 Available: ${available}/${slot?.total_slots || 0}
+
+✨ Magical energy returns to ${characterName}!`;
+          
+          return {
+            content: [{ type: 'text', text: output }]
+          };
+        } else {
+          return {
+            content: [{ type: 'text', text: `❌ RECOVERY FAILED\n\n${characterName} has no used level ${spell_level} spell slots to recover!` }]
+          };
+        }
+      }
+
+      case 'reset_spell_slots': {
+        const { character_id, spell_level } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        db.resetSpellSlots(character_id, spell_level);
+        
+        let output = `🌅 SPELL SLOTS RESET!\n\n`;
+        output += `👤 ${characterName}\n`;
+        
+        if (spell_level !== undefined) {
+          output += `🔮 All level ${spell_level} spell slots have been restored!\n`;
+        } else {
+          output += `🔮 ALL spell slots have been fully restored!\n`;
+        }
+        
+        output += `✨ ${characterName} feels refreshed and ready to cast spells again!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'initialize_spellcasting': {
+        const { character_id, character_class, level, spellcasting_ability } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        db.initializeSpellcasting(character_id, character_class, level, spellcasting_ability);
+        
+        // Get the updated character info
+        const updatedCharacter = db.getCharacter(character_id) as any;
+        const spellSlots = db.getSpellSlots(character_id);
+        
+        let output = `🔮 SPELLCASTING INITIALIZED!\n\n`;
+        output += `👤 ${characterName} - Level ${level} ${character_class}\n`;
+        
+        if (updatedCharacter?.spellcasting_ability) {
+          output += `🧙 Spellcasting Ability: ${updatedCharacter.spellcasting_ability}\n`;
+          output += `🎯 Spell Save DC: ${updatedCharacter.spell_save_dc}\n`;
+          output += `⚔️ Spell Attack Bonus: +${updatedCharacter.spell_attack_bonus}\n\n`;
+        }
+        
+        if (spellSlots && spellSlots.length > 0) {
+          output += `📊 SPELL SLOTS GRANTED:\n`;
+          spellSlots.forEach((slot: any) => {
+            output += `Level ${slot.spell_level}: ${slot.total_slots} slots\n`;
+          });
+        } else {
+          output += `📊 No spell slots (${character_class} may not be a spellcasting class at level ${level})\n`;
+        }
+        
+        output += `\n✨ ${characterName} is now ready to weave magic!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'cast_spell': {
+        const { character_id, spell_name, cast_at_level } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        // Find the spell
+        const spells = db.getCharacterSpells(character_id, { is_prepared: true });
+        const spell = spells.find((s: any) => s.spell_name.toLowerCase() === spell_name.toLowerCase());
+        
+        if (!spell) {
+          return {
+            content: [{ type: 'text', text: `❌ SPELL NOT FOUND\n\n${characterName} doesn't have the spell "${spell_name}" prepared!\n\n💡 Make sure the spell is added to the spellbook and prepared.` }]
+          };
+        }
+        
+        // Determine the level to cast at
+        const castLevel = cast_at_level || spell.spell_level;
+        
+        // Cantrips don't use spell slots
+        if (spell.spell_level === 0) {
+          const output = `✨ CANTRIP CAST!
+
+👤 ${characterName}
+🔮 ${spell.spell_name}
+📊 Level: Cantrip (no spell slot required)
+
+${spell.description ? `📝 ${spell.description}\n` : ''}⚡ Magic sparks from ${characterName}'s fingertips!`;
+          
+          return {
+            content: [{ type: 'text', text: output }]
+          };
+        }
+        
+        // Check if we can cast at the requested level
+        if (castLevel < spell.spell_level) {
+          return {
+            content: [{ type: 'text', text: `❌ INVALID CAST LEVEL\n\n${spell.spell_name} is a level ${spell.spell_level} spell and cannot be cast at level ${castLevel}!` }]
+          };
+        }
+        
+        // Try to use a spell slot
+        const success = db.useSpellSlot(character_id, castLevel);
+        
+        if (success) {
+          const spellSlots = db.getSpellSlots(character_id);
+          const slot = spellSlots.find((s: any) => s.spell_level === castLevel) as any;
+          const remaining = slot ? slot.total_slots - slot.used_slots : 0;
+          
+          const upcastText = castLevel > spell.spell_level ? ` (upcast from level ${spell.spell_level})` : '';
+          
+          const output = `🌟 SPELL CAST!
+
+👤 ${characterName}
+🔮 ${spell.spell_name}
+📊 Cast at level: ${castLevel}${upcastText}
+🔋 Spell slots remaining: ${remaining}/${slot?.total_slots || 0}
+
+${spell.description ? `📝 ${spell.description}\n` : ''}⚡ ${characterName} weaves powerful magic into reality!`;
+          
+          return {
+            content: [{ type: 'text', text: output }]
+          };
+        } else {
+          return {
+            content: [{ type: 'text', text: `❌ NO SPELL SLOTS\n\n${characterName} has no level ${castLevel} spell slots available to cast ${spell.spell_name}!\n\n💡 Try casting at a different level or take a long rest.` }]
+          };
+        }
+      }
+
       // Batch operations
       case 'batch_create_npcs': {
         const { npcs } = args as any;
@@ -1808,6 +2700,791 @@ ${(args as any).outcome === 'victory' ? '🎉 Victory! Well fought!' :
             output += `${index + 1}. NPC ID: ${result.npc_id} - Error: ${result.error}\n`;
           });
         }
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'batch_add_to_encounter': {
+        const { encounter_id, participants } = args as any;
+        const results = [];
+        
+        for (const participant of participants) {
+          try {
+            const participantId = db.addEncounterParticipant(
+              encounter_id,
+              participant.type,
+              participant.id,
+              participant.initiative
+            );
+            
+            // Get participant name for display
+            let name = participant.name;
+            if (!name) {
+              if (participant.type === 'character') {
+                const character = db.getCharacter(participant.id) as any;
+                name = character ? character.name : `Character ${participant.id}`;
+              } else if (participant.type === 'npc') {
+                const npc = db.getNPC(participant.id) as any;
+                name = npc ? npc.name : `NPC ${participant.id}`;
+              } else {
+                name = `${participant.type} ${participant.id}`;
+              }
+            }
+            
+            results.push({
+              success: true,
+              participantId,
+              name,
+              type: participant.type,
+              id: participant.id,
+              initiative: participant.initiative
+            });
+          } catch (error: any) {
+            results.push({
+              success: false,
+              error: error.message,
+              type: participant.type,
+              id: participant.id,
+              initiative: participant.initiative
+            });
+          }
+        }
+        
+        let output = `🎲 BATCH PARTICIPANTS ADDED TO ENCOUNTER!\n\n`;
+        const successful = results.filter(r => r.success);
+        const failed = results.filter(r => !r.success);
+        
+        output += `📊 Results: ${successful.length} added, ${failed.length} failed\n\n`;
+        
+        if (successful.length > 0) {
+          output += `✅ PARTICIPANTS ADDED:\n`;
+          successful.forEach((p: any, index: number) => {
+            const typeIcon = p.type === 'character' ? '🎭' : p.type === 'npc' ? '👹' : '🧑';
+            output += `${index + 1}. ${typeIcon} ${p.name} (${p.type.toUpperCase()}) - Initiative: ${p.initiative}\n`;
+          });
+          
+          // Sort by initiative to show turn order
+          const sorted = [...successful].sort((a, b) => b.initiative - a.initiative);
+          output += `\n🎯 INITIATIVE ORDER:\n`;
+          sorted.forEach((p: any, index: number) => {
+            const typeIcon = p.type === 'character' ? '🎭' : '👹';
+            output += `${index + 1}. ${typeIcon} Initiative ${p.initiative} - ${p.name}\n`;
+          });
+        }
+        
+        if (failed.length > 0) {
+          output += `\n❌ FAILED TO ADD:\n`;
+          failed.forEach((p: any, index: number) => {
+            output += `${index + 1}. ${p.type.toUpperCase()} ${p.id} (Initiative ${p.initiative}): ${p.error}\n`;
+          });
+        }
+        
+        if (successful.length > 0) {
+          output += `\n⚔️ Encounter is ready! Combat can begin!`;
+        }
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      // Stronghold Management
+      case 'create_stronghold': {
+        const { character_id, name, location, stronghold_type, level, defense_bonus, prosperity_level, description, special_features } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const stronghold = db.createStronghold(character_id, {
+          name,
+          location,
+          stronghold_type,
+          level,
+          defense_bonus,
+          prosperity_level,
+          description,
+          special_features
+        }) as any;
+        
+        const output = `🏰 NEW STRONGHOLD ESTABLISHED!
+
+🏛️ ${stronghold.name}
+👤 Owner: ${characterName}
+📍 Location: ${stronghold.location}
+🏰 Type: ${stronghold.stronghold_type || 'Keep'}
+📊 Level: ${stronghold.level || 1}
+🛡️ Defense Bonus: +${stronghold.defense_bonus || 0}
+💰 Prosperity: Level ${stronghold.prosperity_level || 1}
+🆔 Stronghold ID: ${stronghold.id}
+
+${stronghold.description ? `📜 ${stronghold.description}\n` : ''}✅ ${characterName}'s stronghold is ready for development!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'get_stronghold_status': {
+        const { stronghold_id } = args as any;
+        
+        const stronghold = db.getStronghold(stronghold_id) as any;
+        if (!stronghold) {
+          return {
+            content: [{ type: 'text', text: '❌ Stronghold not found!' }]
+          };
+        }
+        
+        const facilities = db.getStrongholdFacilities(stronghold_id);
+        const businesses = db.getStrongholdBusinesses(stronghold_id);
+        const events = db.getStrongholdEvents(stronghold_id, 'pending');
+        
+        let output = `🏰 STRONGHOLD STATUS\n\n`;
+        output += `🏛️ ${stronghold.name}\n`;
+        output += `📍 Location: ${stronghold.location}\n`;
+        output += `🏰 Type: ${stronghold.stronghold_type || 'Keep'}\n`;
+        output += `📊 Level: ${stronghold.level || 1}\n`;
+        output += `🛡️ Defense Bonus: +${stronghold.defense_bonus || 0}\n`;
+        output += `💰 Prosperity: Level ${stronghold.prosperity_level || 1}\n`;
+        output += `💸 Weekly Upkeep: ${stronghold.weekly_upkeep_cost || 0} gp\n\n`;
+        
+        if (facilities && facilities.length > 0) {
+          output += `🏗️ FACILITIES (${facilities.length}):\n`;
+          facilities.forEach((facility: any, index: number) => {
+            const statusIcon = facility.status === 'active' ? '✅' : facility.status === 'under_construction' ? '🚧' : '❌';
+            output += `${index + 1}. ${statusIcon} ${facility.name} (${facility.facility_type})\n`;
+            output += `    📊 Level ${facility.level} | 💸 Upkeep: ${facility.upkeep_cost} gp/week\n`;
+          });
+          output += '\n';
+        }
+        
+        if (businesses && businesses.length > 0) {
+          output += `💼 BUSINESSES (${businesses.length}):\n`;
+          businesses.forEach((business: any, index: number) => {
+            output += `${index + 1}. 💰 ${business.name} (${business.business_type})\n`;
+            output += `    📈 Weekly Income: ${business.weekly_income} gp | 📊 Risk: ${business.risk_level}\n`;
+          });
+          output += '\n';
+        }
+        
+        if (events && events.length > 0) {
+          output += `⚠️ PENDING EVENTS (${events.length}):\n`;
+          events.forEach((event: any, index: number) => {
+            output += `${index + 1}. 📜 ${event.title}\n`;
+            output += `    📝 ${event.description}\n`;
+          });
+        }
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'get_character_strongholds': {
+        const { character_id } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        const strongholds = db.getCharacterStrongholds(character_id);
+        
+        if (!strongholds || strongholds.length === 0) {
+          return {
+            content: [{ type: 'text', text: `🏰 NO STRONGHOLDS\n\n${characterName} doesn't own any strongholds yet.\n\n💡 Use 'create_stronghold' to establish their first stronghold!` }]
+          };
+        }
+        
+        let output = `🏰 ${characterName.toUpperCase()}'S STRONGHOLDS\n\n`;
+        
+        strongholds.forEach((stronghold: any, index: number) => {
+          output += `${index + 1}. 🏛️ ${stronghold.name}\n`;
+          output += `    📍 ${stronghold.location} | 🏰 ${stronghold.stronghold_type || 'Keep'}\n`;
+          output += `    📊 Level ${stronghold.level || 1} | 🛡️ Defense +${stronghold.defense_bonus || 0}\n`;
+          output += `    💰 Prosperity ${stronghold.prosperity_level || 1} | 🆔 ID: ${stronghold.id}\n\n`;
+        });
+        
+        output += `📊 Total Strongholds: ${strongholds.length}`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'update_stronghold': {
+        const { stronghold_id, updates } = args as any;
+        
+        const stronghold = db.updateStronghold(stronghold_id, updates) as any;
+        
+        const output = `✅ STRONGHOLD UPDATED!
+
+🏛️ ${stronghold.name}
+📍 Location: ${stronghold.location}
+🏰 Type: ${stronghold.stronghold_type || 'Keep'}
+📊 Level: ${stronghold.level || 1}
+🛡️ Defense Bonus: +${stronghold.defense_bonus || 0}
+💰 Prosperity: Level ${stronghold.prosperity_level || 1}
+
+🔄 Stronghold has been successfully updated!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      // Facility Management
+      case 'add_facility': {
+        const { stronghold_id, facility_type, name, level, construction_cost, upkeep_cost, build_time_weeks, status, benefits, description } = args as any;
+        
+        const stronghold = db.getStronghold(stronghold_id) as any;
+        if (!stronghold) {
+          return {
+            content: [{ type: 'text', text: '❌ Stronghold not found!' }]
+          };
+        }
+        
+        const facility = db.addFacility(stronghold_id, {
+          facility_type,
+          name,
+          level,
+          construction_cost,
+          upkeep_cost,
+          build_time_weeks,
+          status,
+          benefits,
+          description
+        }) as any;
+        
+        const facilityTemplate = db.getFacilityType(facility_type);
+        
+        const output = `🏗️ NEW FACILITY ADDED!
+
+🏛️ Stronghold: ${stronghold.name}
+🏗️ ${facility.name} (${facility.facility_type})
+📊 Level: ${facility.level || 1}
+💰 Construction Cost: ${facility.construction_cost || 0} gp
+💸 Weekly Upkeep: ${facility.upkeep_cost || 0} gp
+⏱️ Build Time: ${facility.build_time_weeks || 1} weeks
+📊 Status: ${facility.status || 'active'}
+🆔 Facility ID: ${facility.id}
+
+${facilityTemplate?.description ? `📜 ${facilityTemplate.description}\n` : ''}✅ Construction can begin immediately!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'upgrade_facility': {
+        const { facility_id, new_level, upgrade_cost } = args as any;
+        
+        const facility = db.upgradeFacility(facility_id, new_level, upgrade_cost) as any;
+        
+        const output = `⬆️ FACILITY UPGRADED!
+        
+🏗️ ${facility.name} (${facility.facility_type})
+📊 New Level: ${facility.level}
+💰 Total Investment: ${facility.construction_cost} gp
+💸 Weekly Upkeep: ${facility.upkeep_cost} gp
+
+✅ Facility has been successfully upgraded!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'get_stronghold_facilities': {
+        const { stronghold_id } = args as any;
+        
+        const stronghold = db.getStronghold(stronghold_id) as any;
+        if (!stronghold) {
+          return {
+            content: [{ type: 'text', text: '❌ Stronghold not found!' }]
+          };
+        }
+        
+        const facilities = db.getStrongholdFacilities(stronghold_id);
+        
+        if (!facilities || facilities.length === 0) {
+          return {
+            content: [{ type: 'text', text: `🏗️ NO FACILITIES\n\n${stronghold.name} has no facilities yet.\n\n💡 Use 'add_facility' to build your first facility!` }]
+          };
+        }
+        
+        let output = `🏗️ ${stronghold.name.toUpperCase()} FACILITIES\n\n`;
+        let totalUpkeep = 0;
+        
+        facilities.forEach((facility: any, index: number) => {
+          const statusIcon = facility.status === 'active' ? '✅' :
+                            facility.status === 'under_construction' ? '🚧' :
+                            facility.status === 'damaged' ? '⚠️' : '❌';
+          
+          output += `${index + 1}. ${statusIcon} ${facility.name}\n`;
+          output += `    🏗️ Type: ${facility.facility_type} | 📊 Level: ${facility.level}\n`;
+          output += `    💸 Upkeep: ${facility.upkeep_cost} gp/week | 📊 Status: ${facility.status}\n`;
+          if (facility.description) {
+            output += `    📝 ${facility.description}\n`;
+          }
+          output += `\n`;
+          
+          if (facility.status === 'active') {
+            totalUpkeep += facility.upkeep_cost || 0;
+          }
+        });
+        
+        output += `💰 SUMMARY:\n`;
+        output += `🏗️ Total Facilities: ${facilities.length}\n`;
+        output += `✅ Active: ${facilities.filter((f: any) => f.status === 'active').length}\n`;
+        output += `💸 Weekly Upkeep: ${totalUpkeep} gp`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'list_facility_types': {
+        const { category } = args as any;
+        
+        const facilityTypes = db.listFacilityTypes(category);
+        
+        if (!facilityTypes || facilityTypes.length === 0) {
+          return {
+            content: [{ type: 'text', text: `🏗️ NO FACILITY TYPES FOUND\n\n${category ? `No facilities in category "${category}"` : 'No facility types available'}.` }]
+          };
+        }
+        
+        let output = `🏗️ AVAILABLE FACILITY TYPES\n\n`;
+        
+        if (category) {
+          output = `🏗️ ${category.toUpperCase()} FACILITIES\n\n`;
+        }
+        
+        // Group by category if showing all
+        const byCategory: Record<string, any[]> = {};
+        facilityTypes.forEach((type: any) => {
+          if (!byCategory[type.category]) {
+            byCategory[type.category] = [];
+          }
+          byCategory[type.category].push(type);
+        });
+        
+        Object.keys(byCategory).forEach(cat => {
+          if (!category) {
+            output += `📁 ${cat.toUpperCase()}:\n`;
+          }
+          
+          byCategory[cat].forEach((type: any, index: number) => {
+            const prefix = category ? `${index + 1}.` : `  •`;
+            output += `${prefix} 🏗️ ${type.type_name}\n`;
+            output += `    💰 Cost: ${type.base_cost} gp | 💸 Upkeep: ${type.base_upkeep} gp/week\n`;
+            output += `    ⏱️ Build Time: ${type.build_time_weeks} weeks\n`;
+            if (type.description) {
+              output += `    📝 ${type.description}\n`;
+            }
+            output += `\n`;
+          });
+          
+          if (!category) output += `\n`;
+        });
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'recruit_hireling': {
+        const { character_id, name, hireling_type, profession, tier, daily_wage_sp, skill_bonus, abilities, notes } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const hireling = db.recruitHireling(character_id, {
+          name,
+          hireling_type,
+          profession,
+          tier,
+          daily_wage_sp,
+          skill_bonus,
+          abilities,
+          notes
+        }) as any;
+        
+        const tierText = tier || 'laborers';
+        const wageText = daily_wage_sp || 2;
+        
+        const output = `👥 NEW HIRELING RECRUITED!
+        
+👤 ${characterName.toUpperCase()}'S STAFF
+🧑 ${hireling.name} - ${hireling.profession}
+📊 Tier: ${tierText} | 💰 Daily Wage: ${wageText} sp
+📈 Skill Bonus: +${hireling.skill_bonus || 0}
+💖 Loyalty: ${hireling.loyalty_score}/100
+🆔 Hireling ID: ${hireling.id}
+
+${hireling.notes ? `📝 Notes: ${hireling.notes}\n` : ''}✅ ${hireling.name} is ready to serve!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'assign_hireling': {
+        const { hireling_id, task, facility_id } = args as any;
+        
+        let hireling;
+        if (facility_id) {
+          db.assignHirelingToFacility(facility_id, hireling_id);
+          hireling = db.getHireling(hireling_id) as any;
+        } else {
+          hireling = db.assignHireling(hireling_id, task) as any;
+        }
+        
+        const output = `📋 HIRELING ASSIGNED!
+        
+🧑 ${hireling.name} - ${hireling.profession}
+📝 New Task: ${task}
+📊 Status: ${hireling.status}
+${facility_id ? `🏗️ Assigned to Facility ID: ${facility_id}\n` : ''}
+✅ Assignment completed successfully!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'manage_hireling_loyalty': {
+        const { hireling_id, loyalty_change, reason } = args as any;
+        
+        const hireling = db.manageLoyalty(hireling_id, loyalty_change, reason) as any;
+        
+        const changeIcon = loyalty_change > 0 ? '📈' : loyalty_change < 0 ? '📉' : '➡️';
+        const changeText = loyalty_change > 0 ? `+${loyalty_change}` : `${loyalty_change}`;
+        
+        const output = `💖 LOYALTY UPDATED!
+        
+🧑 ${hireling.name} - ${hireling.profession}
+${changeIcon} Loyalty Change: ${changeText}
+💖 New Loyalty: ${hireling.loyalty_score}/100
+${reason ? `📝 Reason: ${reason}\n` : ''}
+${hireling.loyalty_score >= 80 ? '😊 Hireling is very loyal!' :
+  hireling.loyalty_score >= 50 ? '😐 Hireling is reasonably loyal.' :
+  hireling.loyalty_score >= 20 ? '😟 Hireling loyalty is concerning.' :
+  '😡 Hireling may leave or cause trouble!'}`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'calculate_hireling_costs': {
+        const { character_id } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const weeklyWages = db.calculateWeeklyWages(character_id);
+        const hirelings = db.getCharacterHirelings(character_id, 'active');
+        const busyHirelings = db.getCharacterHirelings(character_id, 'busy');
+        
+        const activeCount = (hirelings?.length || 0) + (busyHirelings?.length || 0);
+        
+        const output = `💰 WEEKLY WAGE CALCULATION
+        
+👤 ${characterName.toUpperCase()}'S PAYROLL
+👥 Active Staff: ${activeCount} hirelings
+💸 Weekly Wages: ${weeklyWages} sp (${Math.floor(weeklyWages / 10)} gp, ${weeklyWages % 10} sp)
+📅 Calculation Date: ${new Date().toLocaleDateString()}
+
+💡 This amount will be deducted from your treasury each week.`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'list_character_hirelings': {
+        const { character_id, status } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const hirelings = db.getCharacterHirelings(character_id, status);
+        
+        if (!hirelings || hirelings.length === 0) {
+          const statusText = status ? ` with status "${status}"` : '';
+          return {
+            content: [{ type: 'text', text: `👥 NO HIRELINGS FOUND\n\n${characterName} has no hirelings${statusText}.\n\n💡 Use 'recruit_hireling' to build your staff!` }]
+          };
+        }
+        
+        let output = `👥 ${characterName.toUpperCase()}'S STAFF\n\n`;
+        
+        if (status) {
+          output = `👥 ${characterName.toUpperCase()}'S ${status.toUpperCase()} STAFF\n\n`;
+        }
+        
+        let totalWages = 0;
+        
+        hirelings.forEach((hireling: any, index: number) => {
+          const statusIcon = hireling.status === 'active' ? '✅' :
+                            hireling.status === 'busy' ? '🔄' :
+                            hireling.status === 'injured' ? '🤕' :
+                            hireling.status === 'away' ? '🚶' : '❌';
+          
+          const loyaltyIcon = hireling.loyalty_score >= 80 ? '😊' :
+                             hireling.loyalty_score >= 50 ? '😐' :
+                             hireling.loyalty_score >= 20 ? '😟' : '😡';
+          
+          output += `${index + 1}. ${statusIcon} ${hireling.name} - ${hireling.profession}\n`;
+          output += `    📊 ${hireling.tier} | 💰 ${hireling.daily_wage_sp} sp/day\n`;
+          output += `    💖 Loyalty: ${hireling.loyalty_score}/100 ${loyaltyIcon} | 📈 Skill: +${hireling.skill_bonus}\n`;
+          if (hireling.current_task) {
+            output += `    📝 Current Task: ${hireling.current_task}\n`;
+          }
+          output += `\n`;
+          
+          if (hireling.status === 'active' || hireling.status === 'busy') {
+            totalWages += (hireling.daily_wage_sp || 2) * 7;
+          }
+        });
+        
+        output += `💰 SUMMARY:\n`;
+        output += `👥 Total Staff: ${hirelings.length}\n`;
+        output += `💸 Weekly Wages: ${totalWages} sp`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'establish_business': {
+        const { stronghold_id, name, business_type, investment_cost, weekly_income, risk_level, employee_count, description, special_rules } = args as any;
+        
+        const stronghold = db.getStronghold(stronghold_id) as any;
+        if (!stronghold) {
+          return {
+            content: [{ type: 'text', text: '❌ Stronghold not found!' }]
+          };
+        }
+        
+        const business = db.establishBusiness(stronghold_id, {
+          name,
+          business_type,
+          investment_cost,
+          weekly_income,
+          risk_level,
+          employee_count,
+          description,
+          special_rules
+        }) as any;
+        
+        const riskIcon = business.risk_level === 'low' ? '🟢' :
+                        business.risk_level === 'medium' ? '🟡' : '🔴';
+        
+        const output = `💼 NEW BUSINESS ESTABLISHED!
+        
+🏛️ Stronghold: ${stronghold.name}
+💼 ${business.name} (${business.business_type})
+💰 Investment: ${business.investment_cost || 0} gp
+📈 Weekly Income: ${business.weekly_income || 0} gp
+${riskIcon} Risk Level: ${business.risk_level || 'low'}
+👥 Employees: ${business.employee_count || 0}
+🆔 Business ID: ${business.id}
+
+${business.description ? `📝 ${business.description}\n` : ''}✅ Business is ready to generate income!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'process_weekly_income': {
+        const { character_id, week_number } = args as any;
+        
+        const character = db.getCharacter(character_id) as any;
+        const characterName = character ? character.name : `Character ${character_id}`;
+        
+        const result = db.processWeeklyIncome(character_id, week_number);
+        
+        const netIcon = result.netChange >= 0 ? '📈' : '📉';
+        const netText = result.netChange >= 0 ? `+${result.netChange}` : `${result.netChange}`;
+        
+        const output = `💰 WEEKLY INCOME PROCESSED!
+        
+👤 ${characterName} - Week ${week_number}
+📈 Business Income: +${result.totalIncome} gp
+💸 Facility Upkeep: -${result.totalUpkeep} gp
+👥 Hireling Wages: -${result.totalWages} sp
+${netIcon} Net Change: ${netText} gp
+
+💰 Updated Treasury: ${character.gold || 0} gp
+
+📊 Processing completed for week ${week_number}!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'get_stronghold_businesses': {
+        const { stronghold_id } = args as any;
+        
+        const stronghold = db.getStronghold(stronghold_id) as any;
+        if (!stronghold) {
+          return {
+            content: [{ type: 'text', text: '❌ Stronghold not found!' }]
+          };
+        }
+        
+        const businesses = db.getStrongholdBusinesses(stronghold_id);
+        
+        if (!businesses || businesses.length === 0) {
+          return {
+            content: [{ type: 'text', text: `💼 NO BUSINESSES\n\n${stronghold.name} has no businesses yet.\n\n💡 Use 'establish_business' to create income sources!` }]
+          };
+        }
+        
+        let output = `💼 ${stronghold.name.toUpperCase()} BUSINESSES\n\n`;
+        let totalIncome = 0;
+        
+        businesses.forEach((business: any, index: number) => {
+          const riskIcon = business.risk_level === 'low' ? '🟢' :
+                          business.risk_level === 'medium' ? '🟡' : '🔴';
+          
+          output += `${index + 1}. 💼 ${business.name}\n`;
+          output += `    🏢 Type: ${business.business_type} | 📈 Income: ${business.weekly_income} gp/week\n`;
+          output += `    ${riskIcon} Risk: ${business.risk_level} | 👥 Employees: ${business.employee_count}\n`;
+          if (business.description) {
+            output += `    📝 ${business.description}\n`;
+          }
+          output += `\n`;
+          
+          totalIncome += business.weekly_income || 0;
+        });
+        
+        output += `💰 SUMMARY:\n`;
+        output += `💼 Total Businesses: ${businesses.length}\n`;
+        output += `📈 Weekly Income: ${totalIncome} gp`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'generate_stronghold_event': {
+        const { stronghold_id, event_type } = args as any;
+        
+        const stronghold = db.getStronghold(stronghold_id) as any;
+        if (!stronghold) {
+          return {
+            content: [{ type: 'text', text: '❌ Stronghold not found!' }]
+          };
+        }
+        
+        const event = db.generateStrongholdEvent(stronghold_id, event_type) as any;
+        
+        const typeIcon = event.event_type === 'opportunity' ? '✨' :
+                        event.event_type === 'disaster' ? '⚠️' :
+                        event.event_type === 'quest' ? '🎯' : '📜';
+        
+        let output = `${typeIcon} STRONGHOLD EVENT GENERATED!
+        
+🏛️ Stronghold: ${stronghold.name}
+📜 ${event.title}
+📝 ${event.description}
+📊 Type: ${event.event_type}
+⏰ Deadline: ${event.resolution_deadline ? new Date(event.resolution_deadline).toLocaleDateString() : 'None'}
+🆔 Event ID: ${event.id}
+
+`;
+        
+        if (event.resolution_options) {
+          const options = typeof event.resolution_options === 'string' ?
+            JSON.parse(event.resolution_options) : event.resolution_options;
+          
+          output += `🎯 RESPONSE OPTIONS:\n`;
+          options.forEach((option: any, index: number) => {
+            output += `${index + 1}. ${option.option}\n`;
+            output += `   📊 Effect: ${option.effect}\n`;
+          });
+        }
+        
+        output += `\n⚡ Use 'resolve_stronghold_event' to respond!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'resolve_stronghold_event': {
+        const { event_id, player_choice, outcome } = args as any;
+        
+        const event = db.resolveStrongholdEvent(event_id, player_choice, outcome) as any;
+        
+        const typeIcon = event.event_type === 'opportunity' ? '✨' :
+                        event.event_type === 'disaster' ? '⚠️' :
+                        event.event_type === 'quest' ? '🎯' : '📜';
+        
+        const output = `✅ STRONGHOLD EVENT RESOLVED!
+        
+${typeIcon} ${event.title}
+📝 Player Choice: ${event.player_choice}
+${event.outcome ? `📊 Outcome: ${event.outcome}\n` : ''}📅 Resolved: ${new Date().toLocaleString()}
+
+🎯 Event has been successfully resolved!`;
+        
+        return {
+          content: [{ type: 'text', text: output }]
+        };
+      }
+
+      case 'get_stronghold_events': {
+        const { stronghold_id, status } = args as any;
+        
+        const stronghold = db.getStronghold(stronghold_id) as any;
+        if (!stronghold) {
+          return {
+            content: [{ type: 'text', text: '❌ Stronghold not found!' }]
+          };
+        }
+        
+        const events = db.getStrongholdEvents(stronghold_id, status);
+        
+        if (!events || events.length === 0) {
+          const statusText = status ? ` with status "${status}"` : '';
+          return {
+            content: [{ type: 'text', text: `📜 NO EVENTS FOUND\n\n${stronghold.name} has no events${statusText}.\n\n💡 Use 'generate_stronghold_event' to create events!` }]
+          };
+        }
+        
+        let output = `📜 ${stronghold.name.toUpperCase()} EVENTS\n\n`;
+        
+        if (status) {
+          output = `📜 ${stronghold.name.toUpperCase()} ${status.toUpperCase()} EVENTS\n\n`;
+        }
+        
+        events.forEach((event: any, index: number) => {
+          const typeIcon = event.event_type === 'opportunity' ? '✨' :
+                          event.event_type === 'disaster' ? '⚠️' :
+                          event.event_type === 'quest' ? '🎯' : '📜';
+          
+          const statusIcon = event.status === 'pending' ? '⏳' :
+                            event.status === 'resolved' ? '✅' :
+                            event.status === 'ignored' ? '🙈' : '⌛';
+          
+          output += `${index + 1}. ${typeIcon} ${statusIcon} ${event.title}\n`;
+          output += `    📝 ${event.description}\n`;
+          output += `    📊 Status: ${event.status} | 📅 ${new Date(event.event_date).toLocaleDateString()}\n`;
+          if (event.player_choice) {
+            output += `    🎯 Choice: ${event.player_choice}\n`;
+          }
+          if (event.outcome) {
+            output += `    📊 Outcome: ${event.outcome}\n`;
+          }
+          output += `\n`;
+        });
+        
+        output += `📊 Total Events: ${events.length}`;
         
         return {
           content: [{ type: 'text', text: output }]
